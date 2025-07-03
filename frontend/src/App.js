@@ -8,6 +8,8 @@ import NavBar from './components/NavBar';
 import CourseList from './pages/CourseList';
 import TimetableList from './pages/TimetableList';
 import CalendarView from './pages/CalendarView';
+import AttendanceTeacher from './pages/AttendanceTeacher';
+import AttendanceStudent from './pages/AttendanceStudent';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!getToken());
@@ -29,6 +31,8 @@ function App() {
         <Route path="/courses" element={isAuthenticated ? <CourseList /> : <Navigate to="/login" />} />
         <Route path="/timetables" element={isAuthenticated ? <TimetableList /> : <Navigate to="/login" />} />
         <Route path="/calendar" element={isAuthenticated ? <CalendarView /> : <Navigate to="/login" />} />
+        <Route path="/attendance-teacher" element={isAuthenticated ? <AttendanceTeacher /> : <Navigate to="/login" />} />
+        <Route path="/attendance-student" element={isAuthenticated ? <AttendanceStudent /> : <Navigate to="/login" />} />
         <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
       </Routes>
     </Router>

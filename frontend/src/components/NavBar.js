@@ -38,6 +38,12 @@ const NavBar = () => {
           <Button color="inherit" component={Link} to="/calendar" disabled={location.pathname === '/calendar'}>
             Calendar
           </Button>
+          <Button color="inherit" component={Link} to="/attendance-teacher" disabled={location.pathname === '/attendance-teacher'}>
+            Attendance (Teacher)
+          </Button>
+          <Button color="inherit" component={Link} to="/attendance-student" disabled={location.pathname === '/attendance-student'}>
+            Attendance (Student)
+          </Button>
         </Box>
       </Toolbar>
     </AppBar>
