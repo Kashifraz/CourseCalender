@@ -3,9 +3,9 @@ import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { getTimetables } from '../api/timetables';
+import { getTimetables, getTimetablesByCourse } from '../api/timetables';
 import { getCourses } from '../api/courses';
-import { getAttendanceHistory } from '../api/attendance';
+import { getAttendanceHistory, getCalendarSessions } from '../api/attendance';
 import { getUser } from '../utils/auth';
 import { Box, Typography, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
 
@@ -36,6 +36,8 @@ const CalendarView = () => {
   const [selectedCourse, setSelectedCourse] = useState('');
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [calendarSessions, setCalendarSessions] = useState([]);
+  const [courseTimetables, setCourseTimetables] = useState([]);
   const user = getUser();
   const isStudent = user?.role === 'student';
 
@@ -60,9 +62,18 @@ const CalendarView = () => {
   useEffect(() => {
     if (isStudent && selectedCourse) {
       setLoading(true);
-      getAttendanceHistory(selectedCourse)
-        .then(res => setAttendanceHistory(res.data))
-        .catch(() => setAttendanceHistory([]))
+      Promise.all([
+        getCalendarSessions(selectedCourse),
+        getTimetablesByCourse(selectedCourse)
+      ])
+        .then(([sessionsRes, ttRes]) => {
+          setCalendarSessions(sessionsRes.data);
+          setCourseTimetables(ttRes.data);
+        })
+        .catch(() => {
+          setCalendarSessions([]);
+          setCourseTimetables([]);
+        })
         .finally(() => setLoading(false));
     }
   }, [isStudent, selectedCourse]);
@@ -93,27 +104,84 @@ const CalendarView = () => {
     };
   });
 
-  // Attendance events (for students, for selected course)
-  const attendanceEvents = isStudent && selectedCourse
-    ? attendanceHistory.map(a => {
-        const start = new Date(a.date);
-        const [startHour, startMinute] = a.startTime.split(':');
-        const [endHour, endMinute] = a.endTime.split(':');
+  // For each timetable, generate events for all sessions (past and future)
+  const now = new Date();
+  const attendanceMap = {};
+  calendarSessions.forEach(s => {
+    attendanceMap[
+      `${s.date}|${s.startTime}|${s.endTime}`
+    ] = s.status;
+  });
+
+  // Helper: get all dates for a timetable from its start to today+2 weeks
+  function getSessionDates(timetable, from, to) {
+    const result = [];
+    let current = new Date(from);
+    const end = new Date(to);
+    const dayIdx = dayToIndex[timetable.dayOfWeek];
+    // Move to the first occurrence of the correct day
+    while (current.getDay() !== dayIdx) {
+      current.setDate(current.getDate() + 1);
+    }
+    while (current <= end) {
+      result.push(new Date(current));
+      current.setDate(current.getDate() + 7);
+    }
+    return result;
+  }
+
+  let attendanceEvents = [];
+  if (isStudent && selectedCourse && courseTimetables.length > 0) {
+    // For each timetable, generate events for all sessions
+    const from = new Date();
+    from.setMonth(from.getMonth() - 2); // show last 2 months
+    const to = new Date();
+    to.setMonth(to.getMonth() + 2); // show next 2 months
+    courseTimetables.forEach(tt => {
+      const sessionDates = getSessionDates(tt, from, to);
+      sessionDates.forEach(dateObj => {
+        const dateStr = dateObj.toISOString().split('T')[0];
+        const key = `${dateStr}|${tt.startTime}|${tt.endTime}`;
+        let status = attendanceMap[key];
+        let color = '#90caf9'; // blue for upcoming
+        let label = '';
+        // Determine if session is past or future
+        const sessionEnd = new Date(dateObj);
+        const [endHour, endMinute] = tt.endTime.split(':');
+        sessionEnd.setHours(Number(endHour), Number(endMinute), 0, 0);
+        if (sessionEnd < now) {
+          if (status === 'present') {
+            color = '#4caf50'; label = 'Present';
+          } else if (status === 'absent') {
+            color = '#f44336'; label = 'Absent';
+          } else if (status === 'not_marked') {
+            color = '#ffeb3b'; label = 'Not Marked';
+          } else {
+            color = '#ffeb3b'; label = 'Not Marked';
+          }
+        } else {
+          color = '#90caf9'; label = 'Upcoming';
+        }
+        // Build event
+        const start = new Date(dateObj);
+        const [startHour, startMinute] = tt.startTime.split(':');
+        const [endHour2, endMinute2] = tt.endTime.split(':');
         start.setHours(Number(startHour), Number(startMinute), 0, 0);
-        const end = new Date(a.date);
-        end.setHours(Number(endHour), Number(endMinute), 0, 0);
-        return {
-          id: a.sessionId,
-          title: a.status === 'present' ? 'Present' : 'Absent',
+        const end = new Date(dateObj);
+        end.setHours(Number(endHour2), Number(endMinute2), 0, 0);
+        attendanceEvents.push({
+          id: `${tt._id}|${dateStr}`,
+          title: label,
           start,
           end,
-          backgroundColor: a.status === 'present' ? '#4caf50' : '#f44336',
-          borderColor: a.status === 'present' ? '#4caf50' : '#f44336',
-          textColor: '#fff',
-          extendedProps: { status: a.status },
-        };
-      })
-    : [];
+          backgroundColor: color,
+          borderColor: color,
+          textColor: '#000',
+          extendedProps: { status, timetable: tt },
+        });
+      });
+    });
+  }
 
   // Show timetable events for non-students, attendance events for students
   const events = isStudent && selectedCourse ? attendanceEvents : timetableEvents;

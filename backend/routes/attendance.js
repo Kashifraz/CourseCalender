@@ -98,4 +98,41 @@ router.get('/history/:courseId', auth, requireRole('student'), async (req, res) 
   }
 });
 
+// Student: Get all sessions for a course with attendance status
+router.get('/calendar/:courseId', auth, requireRole('student'), async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const sessions = await AttendanceSession.find({ course: courseId }).sort({ date: 1 });
+    const records = await AttendanceRecord.find({ student: req.user.userId });
+    const recordMap = {};
+    records.forEach(r => { recordMap[r.session.toString()] = r.status; });
+    const now = new Date();
+    const result = sessions.map(s => {
+      let status = 'upcoming';
+      const sessionEnd = new Date(s.date);
+      const [endHour, endMinute] = s.endTime.split(':');
+      sessionEnd.setHours(Number(endHour), Number(endMinute), 0, 0);
+      if (sessionEnd < now) {
+        if (recordMap[s._id.toString()] === 'present') {
+          status = 'present';
+        } else if (recordMap[s._id.toString()] === 'absent') {
+          status = 'absent';
+        } else {
+          status = 'not_marked';
+        }
+      }
+      return {
+        sessionId: s._id,
+        date: s.date,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        status,
+      };
+    });
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 module.exports = router; 

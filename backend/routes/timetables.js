@@ -50,4 +50,14 @@ router.delete('/:id', auth, requireRole('teacher', 'admin'), async (req, res) =>
   }
 });
 
+// Get all timetables for a specific course
+router.get('/by-course/:courseId', async (req, res) => {
+  try {
+    const timetables = await Timetable.find({ course: req.params.courseId });
+    res.json(timetables);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 module.exports = router; 
