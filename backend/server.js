@@ -3,6 +3,8 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
+const courseRoutes = require('./routes/courses');
+const timetableRoutes = require('./routes/timetables');
 
 // Load environment variables
 dotenv.config();
@@ -22,6 +24,8 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 5000;
 connectDB();
 app.use('/api/auth', authRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/timetables', timetableRoutes);
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 }); 
