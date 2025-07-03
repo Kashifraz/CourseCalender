@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { login } from '../api/auth';
 import { setAuth } from '../utils/auth';
+import { Box, TextField, Button, Typography, Alert, Paper } from '@mui/material';
 
 const Login = ({ onLogin }) => {
   const [email, setEmail] = useState('');
@@ -20,21 +21,35 @@ const Login = ({ onLogin }) => {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: '40px auto' }}>
-      <h2>Login</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Email</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
-        </div>
-        <div>
-          <label>Password</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
-        </div>
-        {error && <div style={{ color: 'red' }}>{error}</div>}
-        <button type="submit">Login</button>
-      </form>
-    </div>
+    <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" bgcolor="#f5f6fa">
+      <Paper elevation={3} sx={{ p: 4, width: 350 }}>
+        <Typography variant="h5" mb={2} align="center">Login</Typography>
+        <form onSubmit={handleSubmit}>
+          <TextField
+            label="Email"
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            fullWidth
+            margin="normal"
+            required
+          />
+          <TextField
+            label="Password"
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            fullWidth
+            margin="normal"
+            required
+          />
+          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+          <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
+            Login
+          </Button>
+        </form>
+      </Paper>
+    </Box>
   );
 };
 

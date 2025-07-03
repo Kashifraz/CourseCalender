@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { register } from '../api/auth';
+import { Box, TextField, Button, Typography, Alert, Paper, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
 
 const Register = () => {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'student' });
@@ -24,34 +25,61 @@ const Register = () => {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: '40px auto' }}>
-      <h2>Register</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Name</label>
-          <input name="name" value={form.name} onChange={handleChange} required />
-        </div>
-        <div>
-          <label>Email</label>
-          <input name="email" type="email" value={form.email} onChange={handleChange} required />
-        </div>
-        <div>
-          <label>Password</label>
-          <input name="password" type="password" value={form.password} onChange={handleChange} required />
-        </div>
-        <div>
-          <label>Role</label>
-          <select name="role" value={form.role} onChange={handleChange}>
-            <option value="student">Student</option>
-            <option value="teacher">Teacher</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-        {error && <div style={{ color: 'red' }}>{error}</div>}
-        {success && <div style={{ color: 'green' }}>{success}</div>}
-        <button type="submit">Register</button>
-      </form>
-    </div>
+    <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" bgcolor="#f5f6fa">
+      <Paper elevation={3} sx={{ p: 4, width: 350 }}>
+        <Typography variant="h5" mb={2} align="center">Register</Typography>
+        <form onSubmit={handleSubmit}>
+          <TextField
+            label="Name"
+            name="name"
+            value={form.name}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+            required
+          />
+          <TextField
+            label="Email"
+            name="email"
+            type="email"
+            value={form.email}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+            required
+          />
+          <TextField
+            label="Password"
+            name="password"
+            type="password"
+            value={form.password}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+            required
+          />
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="role-label">Role</InputLabel>
+            <Select
+              labelId="role-label"
+              name="role"
+              value={form.role}
+              label="Role"
+              onChange={handleChange}
+            >
+              <MenuItem value="student">Student</MenuItem>
+              <MenuItem value="teacher">Teacher</MenuItem>
+              <MenuItem value="admin">Admin</MenuItem>
+            </Select>
+          </FormControl>
+          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+          {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
+          <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
+            Register
+          </Button>
+        </form>
+      </Paper>
+    </Box>
   );
 };
 

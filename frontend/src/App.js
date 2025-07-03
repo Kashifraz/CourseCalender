@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import { getToken } from './utils/auth';
+import NavBar from './components/NavBar';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!getToken());
@@ -17,6 +18,7 @@ function App() {
 
   return (
     <Router>
+      <NavBar />
       <Routes>
         <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />} />
         <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} />
