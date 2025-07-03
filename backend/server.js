@@ -5,6 +5,7 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const courseRoutes = require('./routes/courses');
 const timetableRoutes = require('./routes/timetables');
+const attendanceRoutes = require('./routes/attendance');
 
 // Load environment variables
 dotenv.config();
@@ -26,6 +27,7 @@ connectDB();
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/timetables', timetableRoutes);
+app.use('/api/attendance', attendanceRoutes);
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 }); 

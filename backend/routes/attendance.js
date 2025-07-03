@@ -1,0 +1,77 @@
+const express = require('express');
+const AttendanceSession = require('../models/AttendanceSession');
+const AttendanceRecord = require('../models/AttendanceRecord');
+const Timetable = require('../models/Timetable');
+const Course = require('../models/Course');
+const { auth, requireRole } = require('../middleware/auth');
+const crypto = require('crypto');
+
+const router = express.Router();
+
+// Helper to generate a random QR code string
+function generateQRCodeString() {
+  return crypto.randomBytes(16).toString('hex');
+}
+
+// Teacher: Create attendance session & QR code
+router.post('/session', auth, requireRole('teacher', 'admin'), async (req, res) => {
+  try {
+    const { course, timetable, date, startTime, endTime, durationMinutes } = req.body;
+    const qrCode = generateQRCodeString();
+    const expiresAt = new Date(Date.now() + (durationMinutes || 10) * 60000);
+    const session = new AttendanceSession({
+      course,
+      timetable,
+      date,
+      startTime,
+      endTime,
+      qrCode,
+      expiresAt
+    });
+    await session.save();
+    res.status(201).json(session);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Get session details (for QR code display)
+router.get('/session/:id', auth, async (req, res) => {
+  try {
+    const session = await AttendanceSession.findById(req.params.id).populate('course timetable');
+    if (!session) return res.status(404).json({ message: 'Session not found' });
+    res.json(session);
+  } catch (error) {
+    res.status(400).json({ message: 'Invalid session ID' });
+  }
+});
+
+// Student: Scan QR code to mark attendance
+router.post('/scan', auth, requireRole('student'), async (req, res) => {
+  try {
+    const { qrCode } = req.body;
+    const session = await AttendanceSession.findOne({ qrCode });
+    if (!session) return res.status(404).json({ message: 'Invalid QR code' });
+    if (new Date() > session.expiresAt) return res.status(400).json({ message: 'QR code expired' });
+    // Prevent duplicate attendance
+    const existing = await AttendanceRecord.findOne({ session: session._id, student: req.user.userId });
+    if (existing) return res.status(400).json({ message: 'Attendance already marked' });
+    const record = new AttendanceRecord({ session: session._id, student: req.user.userId });
+    await record.save();
+    res.json({ message: 'Attendance marked', record });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Teacher: Get attendance records for a session
+router.get('/session/:id/records', auth, requireRole('teacher', 'admin'), async (req, res) => {
+  try {
+    const records = await AttendanceRecord.find({ session: req.params.id }).populate('student', 'name email');
+    res.json(records);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+module.exports = router; 
