@@ -29,6 +29,12 @@ const NavBar = () => {
               Dashboard
             </Button>
           )}
+          <Button color="inherit" component={Link} to="/courses" disabled={location.pathname === '/courses'}>
+            Courses
+          </Button>
+          <Button color="inherit" component={Link} to="/timetables" disabled={location.pathname === '/timetables'}>
+            Timetables
+          </Button>
         </Box>
       </Toolbar>
     </AppBar>

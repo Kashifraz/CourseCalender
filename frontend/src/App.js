@@ -5,6 +5,8 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import { getToken } from './utils/auth';
 import NavBar from './components/NavBar';
+import CourseList from './pages/CourseList';
+import TimetableList from './pages/TimetableList';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!getToken());
@@ -23,6 +25,8 @@ function App() {
         <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />} />
         <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} />
         <Route path="/dashboard" element={isAuthenticated ? <Dashboard onLogout={handleLogout} /> : <Navigate to="/login" />} />
+        <Route path="/courses" element={isAuthenticated ? <CourseList /> : <Navigate to="/login" />} />
+        <Route path="/timetables" element={isAuthenticated ? <TimetableList /> : <Navigate to="/login" />} />
         <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
       </Routes>
     </Router>
