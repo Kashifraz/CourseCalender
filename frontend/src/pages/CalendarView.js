@@ -79,15 +79,15 @@ const CalendarView = () => {
     }
   }, [isStudent, selectedCourse]);
 
+  // Only fetch enrolled courses once on mount for students
   useEffect(() => {
     if (isStudent) {
-      // Fetch all courses, then filter to those where the student is enrolled
       getCourses().then(res => {
-        // For demo, assume student is enrolled in all courses (replace with real API if available)
         setEnrolledCourses(res.data.filter(c => c.teacher !== user._id));
       });
     }
-  }, [isStudent, user]);
+    // eslint-disable-next-line
+  }, []); // Only on mount
 
   // Timetable events (for all users)
   const timetableEvents = timetables.map(tt => {
@@ -194,8 +194,11 @@ const CalendarView = () => {
     });
   }
 
-  // Show timetable events for non-students, attendance events for students
-  const events = isStudent && selectedCourse ? attendanceEvents : timetableEvents;
+  // For students, only show events if a course is selected
+  let events = timetableEvents;
+  if (isStudent) {
+    events = selectedCourse ? attendanceEvents : [];
+  }
 
   const handleEventClick = (clickInfo) => {
     setSelectedEvent(clickInfo.event);
@@ -227,15 +230,21 @@ const CalendarView = () => {
       <Paper sx={{ p: 2 }}>
         {loading ? <CircularProgress /> :
           error ? <Alert severity="error">{error}</Alert> :
-            <FullCalendar
-              plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-              initialView="timeGridWeek"
-              headerToolbar={{ left: 'prev,next today', center: 'title', right: 'timeGridWeek,dayGridMonth' }}
-              events={events}
-              height={650}
-              eventContent={renderEventContent}
-              eventClick={handleEventClick}
-            />
+            isStudent && !selectedCourse ? (
+              <Typography align="center" color="text.secondary" sx={{ mt: 4, mb: 4 }}>
+                Please select a course to view your attendance calendar.
+              </Typography>
+            ) : (
+              <FullCalendar
+                plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+                initialView="timeGridWeek"
+                headerToolbar={{ left: 'prev,next today', center: 'title', right: 'timeGridWeek,dayGridMonth' }}
+                events={events}
+                height={650}
+                eventContent={renderEventContent}
+                eventClick={handleEventClick}
+              />
+            )
         }
       </Paper>
       <Dialog open={!!selectedEvent} onClose={handleCloseDialog}>
