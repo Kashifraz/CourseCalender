@@ -5,7 +5,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { getTimetables } from '../api/timetables';
 import { getCourses } from '../api/courses';
-import { Box, Typography, Paper, CircularProgress, Alert } from '@mui/material';
+import { Box, Typography, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 
 const dayToIndex = {
   'Monday': 1,
@@ -31,6 +31,7 @@ const CalendarView = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -52,7 +53,6 @@ const CalendarView = () => {
 
   const events = timetables.map(tt => {
     const course = courses.find(c => c._id === (tt.course._id || tt.course));
-    // Calculate next occurrence of the dayOfWeek
     const startDate = getNextDate(tt.dayOfWeek);
     const [startHour, startMinute] = tt.startTime.split(':');
     const [endHour, endMinute] = tt.endTime.split(':');
@@ -68,9 +68,21 @@ const CalendarView = () => {
       extendedProps: {
         classroom: tt.classroom,
         teacher: course?.teacher?.name,
+        description: course?.description,
+        dayOfWeek: tt.dayOfWeek,
+        startTime: tt.startTime,
+        endTime: tt.endTime,
       },
     };
   });
+
+  const handleEventClick = (clickInfo) => {
+    setSelectedEvent(clickInfo.event);
+  };
+
+  const handleCloseDialog = () => {
+    setSelectedEvent(null);
+  };
 
   return (
     <Box p={3}>
@@ -85,20 +97,39 @@ const CalendarView = () => {
               events={events}
               height={650}
               eventContent={renderEventContent}
+              eventClick={handleEventClick}
             />
         }
       </Paper>
+      <Dialog open={!!selectedEvent} onClose={handleCloseDialog}>
+        <DialogTitle>Class Details</DialogTitle>
+        <DialogContent>
+          {selectedEvent && (
+            <Box>
+              <Typography variant="h6" mb={1}>{selectedEvent.title}</Typography>
+              <Typography><b>Day:</b> {selectedEvent.extendedProps.dayOfWeek}</Typography>
+              <Typography><b>Time:</b> {selectedEvent.extendedProps.startTime} - {selectedEvent.extendedProps.endTime}</Typography>
+              <Typography><b>Classroom:</b> {selectedEvent.extendedProps.classroom}</Typography>
+              {selectedEvent.extendedProps.teacher && (
+                <Typography><b>Teacher:</b> {selectedEvent.extendedProps.teacher}</Typography>
+              )}
+              {selectedEvent.extendedProps.description && (
+                <Typography mt={1}><b>Description:</b> {selectedEvent.extendedProps.description}</Typography>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
 
 function renderEventContent(eventInfo) {
   return (
-    <>
-      <b>{eventInfo.event.title}</b><br />
-      <span>{eventInfo.timeText}</span><br />
-      <span>{eventInfo.event.extendedProps.classroom}</span>
-    </>
+    <b>{eventInfo.event.title}</b>
   );
 }
 
