@@ -1,10 +1,12 @@
 import React from 'react';
 import { getUser, clearAuth } from '../utils/auth';
-import { Box, Typography, Paper, Button, Avatar } from '@mui/material';
+import { Box, Typography, Paper, Button, Avatar, Alert } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
+import { useLocation } from 'react-router-dom';
 
 const Dashboard = ({ onLogout }) => {
   const user = getUser();
+  const location = useLocation();
 
   const handleLogout = () => {
     clearAuth();
@@ -20,6 +22,9 @@ const Dashboard = ({ onLogout }) => {
           <PersonIcon fontSize="large" />
         </Avatar>
         <Typography variant="h5" mb={2}>Dashboard</Typography>
+        {location.state?.forbidden && (
+          <Alert severity="error" sx={{ mb: 2 }}>You are not authorized to access that page.</Alert>
+        )}
         <Typography><b>Name:</b> {user.name}</Typography>
         <Typography><b>Email:</b> {user.email}</Typography>
         <Typography><b>Role:</b> {user.role}</Typography>
