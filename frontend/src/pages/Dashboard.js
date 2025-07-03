@@ -18,13 +18,15 @@ const Dashboard = ({ onLogout }) => {
   return (
     <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" bgcolor="#f5f6fa">
       <Paper elevation={3} sx={{ p: 4, width: 350, textAlign: 'center' }}>
+        {location.state?.forbidden && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            You are not authorized to access that page.
+          </Alert>
+        )}
         <Avatar sx={{ bgcolor: 'primary.main', mx: 'auto', mb: 2, width: 56, height: 56 }}>
           <PersonIcon fontSize="large" />
         </Avatar>
         <Typography variant="h5" mb={2}>Dashboard</Typography>
-        {location.state?.forbidden && (
-          <Alert severity="error" sx={{ mb: 2 }}>You are not authorized to access that page.</Alert>
-        )}
         <Typography><b>Name:</b> {user.name}</Typography>
         <Typography><b>Email:</b> {user.email}</Typography>
         <Typography><b>Role:</b> {user.role}</Typography>
