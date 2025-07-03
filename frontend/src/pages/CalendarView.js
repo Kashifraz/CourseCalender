@@ -4,7 +4,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { getTimetables, getTimetablesByCourse } from '../api/timetables';
-import { getCourses, getEnrolledStudents } from '../api/courses';
+import { getCourses, getEnrolledCourses } from '../api/courses';
 import { getAttendanceHistory, getCalendarSessions } from '../api/attendance';
 import { getUser } from '../utils/auth';
 import { Box, Typography, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
@@ -82,8 +82,8 @@ const CalendarView = () => {
   // Only fetch enrolled courses once on mount for students
   useEffect(() => {
     if (isStudent) {
-      getCourses().then(res => {
-        setEnrolledCourses(res.data.filter(c => c.teacher !== user._id));
+      getEnrolledCourses().then(res => {
+        setEnrolledCourses(res.data);
       });
     }
     // eslint-disable-next-line
