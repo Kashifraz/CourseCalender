@@ -5,6 +5,7 @@ const Timetable = require('../models/Timetable');
 const Course = require('../models/Course');
 const { auth, requireRole } = require('../middleware/auth');
 const crypto = require('crypto');
+const Enrollment = require('../models/Enrollment');
 
 const router = express.Router();
 
@@ -46,13 +47,16 @@ router.get('/session/:id', auth, async (req, res) => {
   }
 });
 
-// Student: Scan QR code to mark attendance
+// Student: Scan QR code to mark attendance (only if enrolled)
 router.post('/scan', auth, requireRole('student'), async (req, res) => {
   try {
     const { qrCode } = req.body;
     const session = await AttendanceSession.findOne({ qrCode });
     if (!session) return res.status(404).json({ message: 'Invalid QR code' });
     if (new Date() > session.expiresAt) return res.status(400).json({ message: 'QR code expired' });
+    // Check enrollment
+    const enrolled = await Enrollment.findOne({ course: session.course, student: req.user.userId });
+    if (!enrolled) return res.status(403).json({ message: 'You are not enrolled in this course' });
     // Prevent duplicate attendance
     const existing = await AttendanceRecord.findOne({ session: session._id, student: req.user.userId });
     if (existing) return res.status(400).json({ message: 'Attendance already marked' });
@@ -98,10 +102,13 @@ router.get('/history/:courseId', auth, requireRole('student'), async (req, res) 
   }
 });
 
-// Student: Get all sessions for a course with attendance status
+// Student: Get all sessions for a course with attendance status (only if enrolled)
 router.get('/calendar/:courseId', auth, requireRole('student'), async (req, res) => {
   try {
     const { courseId } = req.params;
+    // Check enrollment
+    const enrolled = await Enrollment.findOne({ course: courseId, student: req.user.userId });
+    if (!enrolled) return res.status(403).json({ message: 'You are not enrolled in this course' });
     const sessions = await AttendanceSession.find({ course: courseId }).sort({ date: 1 });
     const records = await AttendanceRecord.find({ student: req.user.userId });
     const recordMap = {};

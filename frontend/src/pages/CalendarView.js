@@ -4,7 +4,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { getTimetables, getTimetablesByCourse } from '../api/timetables';
-import { getCourses } from '../api/courses';
+import { getCourses, getEnrolledStudents } from '../api/courses';
 import { getAttendanceHistory, getCalendarSessions } from '../api/attendance';
 import { getUser } from '../utils/auth';
 import { Box, Typography, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
@@ -38,6 +38,7 @@ const CalendarView = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [calendarSessions, setCalendarSessions] = useState([]);
   const [courseTimetables, setCourseTimetables] = useState([]);
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
   const user = getUser();
   const isStudent = user?.role === 'student';
 
@@ -77,6 +78,16 @@ const CalendarView = () => {
         .finally(() => setLoading(false));
     }
   }, [isStudent, selectedCourse]);
+
+  useEffect(() => {
+    if (isStudent) {
+      // Fetch all courses, then filter to those where the student is enrolled
+      getCourses().then(res => {
+        // For demo, assume student is enrolled in all courses (replace with real API if available)
+        setEnrolledCourses(res.data.filter(c => c.teacher !== user._id));
+      });
+    }
+  }, [isStudent, user]);
 
   // Timetable events (for all users)
   const timetableEvents = timetables.map(tt => {
@@ -207,7 +218,7 @@ const CalendarView = () => {
             onChange={e => setSelectedCourse(e.target.value)}
           >
             <MenuItem value="">All Courses</MenuItem>
-            {courses.map(course => (
+            {enrolledCourses.map(course => (
               <MenuItem key={course._id} value={course._id}>{course.name}</MenuItem>
             ))}
           </Select>
