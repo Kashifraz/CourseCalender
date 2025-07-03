@@ -5,7 +5,9 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { getTimetables } from '../api/timetables';
 import { getCourses } from '../api/courses';
-import { Box, Typography, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
+import { getAttendanceHistory } from '../api/attendance';
+import { getUser } from '../utils/auth';
+import { Box, Typography, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
 
 const dayToIndex = {
   'Monday': 1,
@@ -31,7 +33,11 @@ const CalendarView = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const user = getUser();
+  const isStudent = user?.role === 'student';
 
   useEffect(() => {
     const fetchData = async () => {
@@ -51,7 +57,18 @@ const CalendarView = () => {
     fetchData();
   }, []);
 
-  const events = timetables.map(tt => {
+  useEffect(() => {
+    if (isStudent && selectedCourse) {
+      setLoading(true);
+      getAttendanceHistory(selectedCourse)
+        .then(res => setAttendanceHistory(res.data))
+        .catch(() => setAttendanceHistory([]))
+        .finally(() => setLoading(false));
+    }
+  }, [isStudent, selectedCourse]);
+
+  // Timetable events (for all users)
+  const timetableEvents = timetables.map(tt => {
     const course = courses.find(c => c._id === (tt.course._id || tt.course));
     const startDate = getNextDate(tt.dayOfWeek);
     const [startHour, startMinute] = tt.startTime.split(':');
@@ -76,6 +93,31 @@ const CalendarView = () => {
     };
   });
 
+  // Attendance events (for students, for selected course)
+  const attendanceEvents = isStudent && selectedCourse
+    ? attendanceHistory.map(a => {
+        const start = new Date(a.date);
+        const [startHour, startMinute] = a.startTime.split(':');
+        const [endHour, endMinute] = a.endTime.split(':');
+        start.setHours(Number(startHour), Number(startMinute), 0, 0);
+        const end = new Date(a.date);
+        end.setHours(Number(endHour), Number(endMinute), 0, 0);
+        return {
+          id: a.sessionId,
+          title: a.status === 'present' ? 'Present' : 'Absent',
+          start,
+          end,
+          backgroundColor: a.status === 'present' ? '#4caf50' : '#f44336',
+          borderColor: a.status === 'present' ? '#4caf50' : '#f44336',
+          textColor: '#fff',
+          extendedProps: { status: a.status },
+        };
+      })
+    : [];
+
+  // Show timetable events for non-students, attendance events for students
+  const events = isStudent && selectedCourse ? attendanceEvents : timetableEvents;
+
   const handleEventClick = (clickInfo) => {
     setSelectedEvent(clickInfo.event);
   };
@@ -87,6 +129,22 @@ const CalendarView = () => {
   return (
     <Box p={3}>
       <Typography variant="h4" mb={2}>Class Calendar</Typography>
+      {isStudent && (
+        <FormControl sx={{ minWidth: 200, mb: 2 }}>
+          <InputLabel id="select-course-label">Select Course</InputLabel>
+          <Select
+            labelId="select-course-label"
+            value={selectedCourse}
+            label="Select Course"
+            onChange={e => setSelectedCourse(e.target.value)}
+          >
+            <MenuItem value="">All Courses</MenuItem>
+            {courses.map(course => (
+              <MenuItem key={course._id} value={course._id}>{course.name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      )}
       <Paper sx={{ p: 2 }}>
         {loading ? <CircularProgress /> :
           error ? <Alert severity="error">{error}</Alert> :
@@ -128,6 +186,13 @@ const CalendarView = () => {
 };
 
 function renderEventContent(eventInfo) {
+  // For attendance events, show status with color
+  if (eventInfo.event.extendedProps.status) {
+    return (
+      <b style={{ color: '#fff' }}>{eventInfo.event.title}</b>
+    );
+  }
+  // For timetable events, show course name
   return (
     <b>{eventInfo.event.title}</b>
   );

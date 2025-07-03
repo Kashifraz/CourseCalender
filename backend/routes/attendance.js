@@ -74,4 +74,28 @@ router.get('/session/:id/records', auth, requireRole('teacher', 'admin'), async 
   }
 });
 
+// Student: Get attendance history for a course
+router.get('/history/:courseId', auth, requireRole('student'), async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    // Find all sessions for this course
+    const sessions = await AttendanceSession.find({ course: courseId });
+    const sessionIds = sessions.map(s => s._id);
+    // Find all records for this student in these sessions
+    const records = await AttendanceRecord.find({ session: { $in: sessionIds }, student: req.user.userId })
+      .populate('session');
+    // Map to calendar-friendly format
+    const history = records.map(r => ({
+      date: r.session.date,
+      startTime: r.session.startTime,
+      endTime: r.session.endTime,
+      status: r.status,
+      sessionId: r.session._id,
+    }));
+    res.json(history);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 module.exports = router; 
