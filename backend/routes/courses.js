@@ -1,6 +1,8 @@
 const express = require('express');
 const Course = require('../models/Course');
 const { auth, requireRole } = require('../middleware/auth');
+const Enrollment = require('../models/Enrollment');
+const User = require('../models/User');
 
 const router = express.Router();
 
@@ -57,6 +59,42 @@ router.delete('/:id', auth, requireRole('teacher', 'admin'), async (req, res) =>
     res.json({ message: 'Course deleted' });
   } catch (error) {
     res.status(400).json({ message: 'Invalid course ID' });
+  }
+});
+
+// Enroll a student by email (teacher/admin)
+router.post('/:id/enroll', auth, requireRole('teacher', 'admin'), async (req, res) => {
+  try {
+    const { email } = req.body;
+    const student = await User.findOne({ email, role: 'student' });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    await Enrollment.create({ course: req.params.id, student: student._id });
+    res.json({ message: 'Student enrolled' });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Student already enrolled' });
+    }
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// List enrolled students for a course
+router.get('/:id/students', auth, async (req, res) => {
+  try {
+    const enrollments = await Enrollment.find({ course: req.params.id }).populate('student', 'name email');
+    res.json(enrollments.map(e => e.student));
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Remove a student from a course
+router.delete('/:id/enroll/:studentId', auth, requireRole('teacher', 'admin'), async (req, res) => {
+  try {
+    await Enrollment.deleteOne({ course: req.params.id, student: req.params.studentId });
+    res.json({ message: 'Student removed from course' });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 });
 
