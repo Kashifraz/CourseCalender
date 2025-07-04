@@ -6,14 +6,12 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import ClassIcon from '@mui/icons-material/Class';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import GroupIcon from '@mui/icons-material/Group';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import { useNavigate } from 'react-router-dom';
 import { getUser, clearAuth } from '../utils/auth';
-
-const navLinks = [
-  { label: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { label: 'Courses', icon: <ClassIcon />, path: '/courses' },
-  { label: 'Calendar', icon: <CalendarTodayIcon />, path: '/calendar' },
-];
 
 const NavBar = ({ onThemeToggle, darkMode }) => {
   const user = getUser();
@@ -23,10 +21,26 @@ const NavBar = ({ onThemeToggle, darkMode }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // Build nav links based on user role
+  let navLinks = [];
+  if (user) {
+    navLinks.push({ label: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' });
+    navLinks.push({ label: 'Courses', icon: <ClassIcon />, path: '/courses' });
+    navLinks.push({ label: 'Calendar', icon: <CalendarTodayIcon />, path: '/calendar' });
+    if (user.role === 'student') {
+      navLinks.push({ label: 'Attendance', icon: <QrCodeScannerIcon />, path: '/attendance-student' });
+      navLinks.push({ label: 'Stats', icon: <BarChartIcon />, path: '/student-courses-stats' });
+    }
+    if (user.role === 'teacher' || user.role === 'admin') {
+      navLinks.push({ label: 'Timetables', icon: <TimelineIcon />, path: '/timetables' });
+      navLinks.push({ label: 'Attendance', icon: <QrCodeScannerIcon />, path: '/attendance-teacher' });
+      // Optionally: navLinks.push({ label: 'Enrolled', icon: <GroupIcon />, path: '/courses/:id/students' });
+    }
+  }
+
   const handleMenu = (event) => setAnchorEl(event.currentTarget);
   const handleClose = () => setAnchorEl(null);
   const handleLogout = () => { clearAuth(); navigate('/login'); };
-
   const handleDrawerToggle = () => setDrawerOpen(!drawerOpen);
 
   const renderLinks = () => navLinks.map(link => (
