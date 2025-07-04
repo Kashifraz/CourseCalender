@@ -7,7 +7,8 @@ import { getTimetables, getTimetablesByCourse } from '../api/timetables';
 import { getCourses } from '../api/courses';
 import { getAttendanceHistory, getCalendarSessions } from '../api/attendance';
 import { getUser } from '../utils/auth';
-import { Box, Typography, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
+import { Box, Typography, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button, MenuItem, Select, InputLabel, FormControl, Divider, Skeleton } from '@mui/material';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 
 const dayToIndex = {
   'Monday': 1,
@@ -44,6 +45,7 @@ const CalendarView = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
         const [ttRes, cRes] = await Promise.all([
           getTimetables(),
@@ -79,7 +81,6 @@ const CalendarView = () => {
     }
   }, [isStudent, selectedCourse]);
 
-  // For students, use the courses from the main fetch
   useEffect(() => {
     if (isStudent) {
       setEnrolledCourses(courses);
@@ -206,28 +207,39 @@ const CalendarView = () => {
   };
 
   return (
-    <Box p={3}>
-      <Typography variant="h4" mb={2}>Class Calendar</Typography>
-      {isStudent && (
-        <FormControl sx={{ minWidth: 200, mb: 2 }}>
-          <InputLabel id="select-course-label">Select Course</InputLabel>
-          <Select
-            labelId="select-course-label"
-            value={selectedCourse}
-            label="Select Course"
-            onChange={e => setSelectedCourse(e.target.value)}
-          >
-            <MenuItem value="">All Courses</MenuItem>
-            {enrolledCourses.map(course => (
-              <MenuItem key={course._id} value={course._id}>{course.name}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      )}
-      <Paper sx={{ p: 2 }}>
-        {loading ? <CircularProgress /> :
-          error ? <Alert severity="error">{error}</Alert> :
-            isStudent && !selectedCourse ? (
+    <Box p={{ xs: 1, sm: 2, md: 4 }}>
+      <Box display="flex" alignItems="center" mb={2}>
+        <CalendarTodayIcon color="primary" sx={{ mr: 1, fontSize: 32 }} />
+        <Typography variant="h4" fontWeight={700} letterSpacing={1}>
+          Class Calendar
+        </Typography>
+      </Box>
+      <Divider sx={{ mb: 3 }} />
+      <Paper elevation={4} sx={{ borderRadius: 3, boxShadow: 6, p: { xs: 1, sm: 2, md: 3 }, mb: 4, minHeight: 500 }}>
+        {loading ? (
+          <Box p={3}><Skeleton variant="rectangular" height={400} /></Box>
+        ) : error ? (
+          <Alert severity="error">{error}</Alert>
+        ) : (
+          <>
+            {isStudent && (
+              <FormControl sx={{ minWidth: 220, mb: 2 }}>
+                <InputLabel id="select-course-label">Select Course</InputLabel>
+                <Select
+                  labelId="select-course-label"
+                  value={selectedCourse}
+                  label="Select Course"
+                  onChange={e => setSelectedCourse(e.target.value)}
+                  variant="outlined"
+                >
+                  <MenuItem value="">All Courses</MenuItem>
+                  {enrolledCourses.map(course => (
+                    <MenuItem key={course._id} value={course._id}>{course.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+            {isStudent && !selectedCourse ? (
               <Typography align="center" color="text.secondary" sx={{ mt: 4, mb: 4 }}>
                 Please select a course to view your attendance calendar.
               </Typography>
@@ -241,10 +253,11 @@ const CalendarView = () => {
                 eventContent={renderEventContent}
                 eventClick={handleEventClick}
               />
-            )
-        }
+            )}
+          </>
+        )}
       </Paper>
-      <Dialog open={!!selectedEvent} onClose={handleCloseDialog}>
+      <Dialog open={!!selectedEvent} onClose={handleCloseDialog} PaperProps={{ sx: { borderRadius: 3 } }}>
         <DialogTitle>Class Details</DialogTitle>
         <DialogContent>
           {selectedEvent && (
@@ -271,15 +284,15 @@ const CalendarView = () => {
 };
 
 function renderEventContent(eventInfo) {
-  // For attendance events, show status with color
-  if (eventInfo.event.extendedProps.status) {
-    return (
-      <b style={{ color: '#fff' }}>{eventInfo.event.title}</b>
-    );
-  }
-  // For timetable events, show course name
   return (
-    <b>{eventInfo.event.title}</b>
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+      <Typography variant="caption" fontWeight={600} sx={{ color: eventInfo.backgroundColor, mb: 0.5 }}>
+        {eventInfo.event.title}
+      </Typography>
+      <Typography variant="caption" color="text.secondary">
+        {eventInfo.timeText}
+      </Typography>
+    </Box>
   );
 }
 
