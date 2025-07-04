@@ -65,12 +65,25 @@ const Dashboard = ({ onLogout }) => {
         try {
           const res = await getCourses();
           if (!isMounted) return;
-          // Only courses where user is teacher (handle both string and object)
+          // Only courses where user is teacher (handle both string and object, compare as strings, fallback to email)
           const teacherCourses = res.data.filter(c => {
             if (!c.teacher) return false;
-            if (typeof c.teacher === 'string') return c.teacher === user._id;
-            if (typeof c.teacher === 'object') return c.teacher._id === user._id;
-            return false;
+            const courseTeacherId = c.teacher._id ? String(c.teacher._id) : null;
+            const userId = String(user._id);
+            const idMatch = courseTeacherId === userId;
+            const emailMatch = c.teacher.email && user.email && c.teacher.email === user.email;
+            // Debug log
+            if (!idMatch && !emailMatch) {
+              // eslint-disable-next-line no-console
+              console.log('Course not matched:', {
+                courseId: c._id,
+                courseTeacherId,
+                userId,
+                courseTeacherEmail: c.teacher.email,
+                userEmail: user.email
+              });
+            }
+            return idMatch || emailMatch;
           });
           setCourses(teacherCourses);
           const statsObj = {};
@@ -188,7 +201,12 @@ const Dashboard = ({ onLogout }) => {
           <Typography variant="h5" mb={3} align="center">My Courses & Class Attendance Stats</Typography>
           {loading ? <Box p={3}><CircularProgress /></Box> : error ? <Box p={3}><Alert severity="error">{error}</Alert></Box> : (
             courses.length === 0 ? (
-              <Alert severity="info">No courses found for you.</Alert>
+              <Alert severity="info">
+                No courses found for you.<br />
+                <b>Your user ID:</b> {user._id}<br />
+                <b>Your email:</b> {user.email}<br />
+                <b>Check the browser console for debug info.</b>
+              </Alert>
             ) : (
               <Grid container spacing={3}>
                 {courses.map(course => (
