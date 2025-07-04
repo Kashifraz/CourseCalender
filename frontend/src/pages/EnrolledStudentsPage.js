@@ -38,28 +38,28 @@ const EnrolledStudentsPage = () => {
     setExporting(true);
     try {
       const res = await getAttendanceMatrix(courseId);
-      const { students, sessions, matrix } = res.data;
+      const { students, columns, matrix } = res.data;
       // Build worksheet data
-      const header = ['Name', 'Email', ...sessions.map(s => `${s.date} ${s.startTime}`)];
+      const header = ['Name', 'Email', ...columns.map(c => c.label)];
       const wsData = [header];
       students.forEach(student => {
         const row = [student.name, student.email];
-        sessions.forEach(sess => {
-          const status = matrix[student._id][sess._id];
+        for (let i = 0; i < columns.length; i++) {
+          const status = matrix[student._id][i];
           row.push(statusLabel[status] || 'Not Marked');
-        });
+        }
         wsData.push(row);
       });
       // Create worksheet
       const ws = XLSX.utils.aoa_to_sheet(wsData);
       // Style cells
       students.forEach((student, i) => {
-        sessions.forEach((sess, j) => {
-          const status = matrix[student._id][sess._id];
+        for (let j = 0; j < columns.length; j++) {
+          const status = matrix[student._id][j];
           const cellRef = XLSX.utils.encode_cell({ r: i + 1, c: j + 2 });
-          if (!ws[cellRef]) return;
+          if (!ws[cellRef]) continue;
           ws[cellRef].s = statusColor[status] || statusColor['not_marked'];
-        });
+        }
       });
       // Style header
       for (let c = 0; c < header.length; c++) {
@@ -72,7 +72,7 @@ const EnrolledStudentsPage = () => {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
       // Export
-      XLSX.writeFile(wb, 'attendance.xlsx', { cellStyles: true });
+      XLSX.writeFile(wb, 'attendance_by_timetable.xlsx', { cellStyles: true });
     } catch (e) {
       alert('Failed to export attendance');
     }

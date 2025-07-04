@@ -178,30 +178,76 @@ router.get('/course/:courseId/students', auth, requireRole('teacher', 'admin'), 
   }
 });
 
-// Get attendance matrix for a course (for export)
+// Get attendance matrix for a course (for export, by timetable/week, always 14 weeks)
 router.get('/course/:courseId/attendance-matrix', auth, requireRole('teacher', 'admin'), async (req, res) => {
   try {
     const { courseId } = req.params;
     // Get all enrolled students
     const enrollments = await Enrollment.find({ course: courseId }).populate('student', 'name email');
     const students = enrollments.map(e => ({ _id: e.student._id, name: e.student.name, email: e.student.email }));
-    // Get all sessions for the course, sorted by date/time
-    const sessions = await AttendanceSession.find({ course: courseId }).sort({ date: 1, startTime: 1 });
+    // Get all timetables for the course
+    const timetables = await Timetable.find({ course: courseId });
+    // Get all sessions for the course
+    const sessions = await AttendanceSession.find({ course: courseId });
+    // Map sessions by timetable and date
+    const sessionMap = {};
+    sessions.forEach(sess => {
+      const key = `${sess.timetable.toString()}|${sess.date.toISOString().slice(0,10)}`;
+      sessionMap[key] = sess;
+    });
     // Get all attendance records for these sessions
     const sessionIds = sessions.map(s => s._id.toString());
     const records = await AttendanceRecord.find({ session: { $in: sessionIds } });
-    // Build matrix: studentId -> sessionId -> status
+    // Map attendance by student and session
+    const attendanceMap = {};
+    records.forEach(r => {
+      attendanceMap[`${r.student.toString()}|${r.session.toString()}`] = r.status || 'present';
+    });
+    // If no timetables, return empty
+    if (timetables.length === 0) {
+      return res.json({ students, columns: [], matrix: {} });
+    }
+    // Find the earliest date for each timetable slot (first session for that timetable)
+    const timetableStartDates = {};
+    timetables.forEach(tt => {
+      // Find the earliest session for this timetable
+      const slotSessions = sessions.filter(s => s.timetable.toString() === tt._id.toString());
+      if (slotSessions.length > 0) {
+        timetableStartDates[tt._id.toString()] = new Date(Math.min(...slotSessions.map(s => new Date(s.date))));
+      } else {
+        // If no session, use today as fallback
+        timetableStartDates[tt._id.toString()] = new Date();
+      }
+    });
+    // Build columns: for each timetable, for 14 weeks
+    const columns = [];
     const matrix = {};
     students.forEach(s => { matrix[s._id] = {}; });
-    sessions.forEach(sess => {
-      students.forEach(s => {
-        matrix[s._id][sess._id] = 'not_marked';
-      });
+    timetables.forEach(tt => {
+      const startDate = timetableStartDates[tt._id.toString()];
+      for (let week = 1; week <= 14; week++) {
+        // Calculate the date for this week/slot
+        const dayIdx = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].indexOf(tt.dayOfWeek);
+        const slotDate = new Date(startDate);
+        slotDate.setDate(startDate.getDate() + 7 * (week - 1));
+        // Adjust to the correct day of week
+        slotDate.setDate(slotDate.getDate() + ((dayIdx - slotDate.getDay() + 7) % 7));
+        const label = `Week ${week} ${tt.dayOfWeek} ${tt.startTime}-${tt.endTime}`;
+        columns.push({ label, week, dayOfWeek: tt.dayOfWeek, startTime: tt.startTime, endTime: tt.endTime, timetableId: tt._id, date: slotDate.toISOString().slice(0,10) });
+        // For each student, find session and attendance
+        const sessionKey = `${tt._id.toString()}|${slotDate.toISOString().slice(0,10)}`;
+        const session = sessionMap[sessionKey];
+        for (const s of students) {
+          let status = 'not_marked';
+          if (session) {
+            const attKey = `${s._id.toString()}|${session._id.toString()}`;
+            status = attendanceMap[attKey] || 'not_marked';
+          }
+          matrix[s._id][columns.length-1] = status;
+        }
+      }
     });
-    records.forEach(r => {
-      matrix[r.student.toString()][r.session.toString()] = r.status || 'present';
-    });
-    res.json({ students, sessions, matrix });
+    res.json({ students, columns, matrix });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
