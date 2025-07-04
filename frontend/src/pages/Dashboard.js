@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { getUser, clearAuth } from '../utils/auth';
 import { Box, Typography, Paper, Button, Avatar, Alert, CircularProgress, Grid } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import { useLocation } from 'react-router-dom';
-import { getCourses } from '../api/courses';
-import { getAttendanceHistory } from '../api/attendance';
+import { getCourses, getEnrolledStudents } from '../api/courses';
+import { getAttendanceHistory, getAttendanceMatrix } from '../api/attendance';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts';
 
 const COLORS = ['#4caf50', '#f44336', '#ffeb3b']; // Present, Absent, Not Marked
@@ -21,7 +21,7 @@ const getStats = (history) => {
 };
 
 const Dashboard = ({ onLogout }) => {
-  const user = getUser();
+  const user = useMemo(() => getUser(), []);
   const location = useLocation();
   const [courses, setCourses] = useState([]);
   const [stats, setStats] = useState({});
@@ -29,35 +29,42 @@ const Dashboard = ({ onLogout }) => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (user?.role === 'student') {
+    let isMounted = true;
+    if (!user) return;
+    if (user.role === 'student') {
       setLoading(true);
       const fetchData = async () => {
         try {
           const res = await getCourses();
+          if (!isMounted) return;
           setCourses(res.data);
           const statsObj = {};
           await Promise.all(res.data.map(async (course) => {
             try {
               const histRes = await getAttendanceHistory(course._id);
+              if (!isMounted) return;
               const [present, absent, notMarked] = getStats(histRes.data);
               statsObj[course._id] = { present, absent, notMarked, total: histRes.data.length };
             } catch {
               statsObj[course._id] = { present: 0, absent: 0, notMarked: 0, total: 0 };
             }
           }));
+          if (!isMounted) return;
           setStats(statsObj);
           setError('');
         } catch {
+          if (!isMounted) return;
           setError('Failed to fetch courses or attendance');
         }
-        setLoading(false);
+        if (isMounted) setLoading(false);
       };
       fetchData();
-    } else if (user?.role === 'teacher' || user?.role === 'admin') {
+    } else if (user.role === 'teacher' || user.role === 'admin') {
       setLoading(true);
       const fetchTeacherData = async () => {
         try {
           const res = await getCourses();
+          if (!isMounted) return;
           // Only courses where user is teacher
           const teacherCourses = res.data.filter(c => c.teacher && c.teacher._id === user._id);
           setCourses(teacherCourses);
@@ -65,10 +72,10 @@ const Dashboard = ({ onLogout }) => {
           await Promise.all(teacherCourses.map(async (course) => {
             try {
               // Get enrolled students
-              const studentsRes = await import('../api/courses').then(m => m.getEnrolledStudents(course._id));
+              const studentsRes = await getEnrolledStudents(course._id);
               const students = studentsRes.data;
               // Get attendance matrix
-              const matrixRes = await import('../api/attendance').then(m => m.getAttendanceMatrix(course._id));
+              const matrixRes = await getAttendanceMatrix(course._id);
               const { students: matrixStudents, columns, matrix } = matrixRes.data;
               // Calculate average attendance percentage
               let totalPercent = 0;
@@ -94,16 +101,19 @@ const Dashboard = ({ onLogout }) => {
               statsObj[course._id] = { enrolled: 0, avgAttendance: 'N/A' };
             }
           }));
+          if (!isMounted) return;
           setStats(statsObj);
           setError('');
         } catch {
+          if (!isMounted) return;
           setError('Failed to fetch courses or stats');
         }
-        setLoading(false);
+        if (isMounted) setLoading(false);
       };
       fetchTeacherData();
     }
-  }, [user]);
+    return () => { isMounted = false; };
+  }, []);
 
   const handleLogout = () => {
     clearAuth();
