@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { getTimetables, createTimetable, updateTimetable, deleteTimetable } from '../api/timetables';
-import { getCourses } from '../api/courses';
 import { getUser } from '../utils/auth';
-import { Box, Typography, Paper, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
+import { Box, Typography, Paper, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, Divider, Tooltip, Fab, Skeleton } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import CloseIcon from '@mui/icons-material/Close';
+import { getTimetables, createTimetable, updateTimetable, deleteTimetable } from '../api/timetables';
+import { getCourses } from '../api/courses';
 
 const emptyForm = { course: '', dayOfWeek: '', startTime: '', endTime: '', classroom: '' };
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -16,34 +19,31 @@ const TimetableList = () => {
   const [editingId, setEditingId] = useState(null);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
-  const [filterCourse, setFilterCourse] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(true);
   const user = getUser();
   const isTeacherOrAdmin = user && (user.role === 'teacher' || user.role === 'admin');
 
-  const fetchTimetables = async (courseId) => {
+  const fetchTimetables = async () => {
+    setLoading(true);
     try {
-      const res = await getTimetables(courseId);
-      setTimetables(res.data);
-    } catch (err) {
+      const [ttRes, cRes] = await Promise.all([getTimetables(), getCourses()]);
+      setTimetables(ttRes.data);
+      setCourses(cRes.data);
+    } catch {
       setError('Failed to fetch timetables');
     }
-  };
-  const fetchCourses = async () => {
-    try {
-      const res = await getCourses();
-      setCourses(res.data);
-    } catch (err) {
-      setError('Failed to fetch courses');
-    }
+    setLoading(false);
   };
 
-  useEffect(() => { fetchCourses(); fetchTimetables(); }, []);
+  useEffect(() => { fetchTimetables(); }, []);
 
-  const handleOpen = (timetable = emptyForm) => {
-    setForm(timetable.course ? { ...timetable, course: timetable.course._id } : emptyForm);
-    setEditingId(timetable._id || null);
+  const handleOpen = (tt = emptyForm) => {
+    setForm(tt);
+    setEditingId(tt._id || null);
     setOpen(true);
     setError('');
+    setSuccess('');
   };
   const handleClose = () => { setOpen(false); setForm(emptyForm); setEditingId(null); };
 
@@ -54,108 +54,136 @@ const TimetableList = () => {
     try {
       if (editingId) {
         await updateTimetable(editingId, form);
+        setSuccess('Timetable updated');
       } else {
         await createTimetable(form);
+        setSuccess('Timetable created');
       }
       handleClose();
-      fetchTimetables(filterCourse);
+      fetchTimetables();
     } catch (err) {
       setError(err.response?.data?.message || 'Error saving timetable');
     }
   };
 
   const handleDelete = async id => {
-    if (!window.confirm('Delete this timetable entry?')) return;
+    if (!window.confirm('Delete this timetable?')) return;
     try {
       await deleteTimetable(id);
-      fetchTimetables(filterCourse);
-    } catch (err) {
+      fetchTimetables();
+    } catch {
       setError('Error deleting timetable');
     }
   };
 
-  const handleFilter = e => {
-    setFilterCourse(e.target.value);
-    fetchTimetables(e.target.value);
-  };
-
   return (
-    <Box p={3}>
-      <Typography variant="h4" mb={2}>Timetables</Typography>
-      <FormControl sx={{ minWidth: 200, mb: 2 }}>
-        <InputLabel id="filter-course-label">Filter by Course</InputLabel>
-        <Select labelId="filter-course-label" value={filterCourse} label="Filter by Course" onChange={handleFilter}>
-          <MenuItem value="">All Courses</MenuItem>
-          {courses.map(course => (
-            <MenuItem key={course._id} value={course._id}>{course.name}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-      {isTeacherOrAdmin && (
-        <Button variant="contained" color="primary" onClick={() => handleOpen()} sx={{ mb: 2, ml: 2 }}>
-          Add Timetable
-        </Button>
-      )}
+    <Box p={{ xs: 1, sm: 2, md: 4 }}>
+      <Box display="flex" alignItems="center" mb={2}>
+        <TimelineIcon color="primary" sx={{ mr: 1, fontSize: 32 }} />
+        <Typography variant="h4" fontWeight={700} letterSpacing={1}>
+          Timetables
+        </Typography>
+        {isTeacherOrAdmin && (
+          <Tooltip title="Add Timetable">
+            <Fab color="primary" size="medium" sx={{ ml: 2 }} onClick={() => handleOpen()}>
+              <AddIcon />
+            </Fab>
+          </Tooltip>
+        )}
+      </Box>
+      <Divider sx={{ mb: 3 }} />
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Course</TableCell>
-              <TableCell>Day</TableCell>
-              <TableCell>Start Time</TableCell>
-              <TableCell>End Time</TableCell>
-              <TableCell>Classroom</TableCell>
-              {isTeacherOrAdmin && <TableCell>Actions</TableCell>}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {timetables.map(tt => (
-              <TableRow key={tt._id}>
-                <TableCell>{tt.course?.name}</TableCell>
-                <TableCell>{tt.dayOfWeek}</TableCell>
-                <TableCell>{tt.startTime}</TableCell>
-                <TableCell>{tt.endTime}</TableCell>
-                <TableCell>{tt.classroom}</TableCell>
-                {isTeacherOrAdmin && (
-                  <TableCell>
-                    <IconButton onClick={() => handleOpen(tt)}><EditIcon /></IconButton>
-                    <IconButton onClick={() => handleDelete(tt._id)}><DeleteIcon /></IconButton>
-                  </TableCell>
-                )}
+      <Paper elevation={4} sx={{ borderRadius: 3, boxShadow: 6, p: 2, mb: 4 }}>
+        <TableContainer>
+          <Table sx={{ minWidth: 650 }}>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: 'primary.light', position: 'sticky', top: 0, zIndex: 1 }}>
+                <TableCell sx={{ fontWeight: 700 }}>Course</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Day</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Start Time</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>End Time</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Classroom</TableCell>
+                {isTeacherOrAdmin && <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>{editingId ? 'Edit Timetable' : 'Add Timetable'}</DialogTitle>
+            </TableHead>
+            <TableBody>
+              {loading ? Array.from({ length: 4 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={isTeacherOrAdmin ? 6 : 5}>
+                    <Skeleton variant="rectangular" height={40} />
+                  </TableCell>
+                </TableRow>
+              )) : timetables.map((tt, idx) => (
+                <TableRow
+                  key={tt._id}
+                  sx={{
+                    backgroundColor: idx % 2 === 0 ? 'background.default' : 'grey.50',
+                    transition: 'background 0.2s',
+                    '&:hover': { backgroundColor: 'primary.lighter', cursor: 'pointer' },
+                  }}
+                >
+                  <TableCell>{courses.find(c => c._id === (tt.course._id || tt.course))?.name || 'N/A'}</TableCell>
+                  <TableCell>{tt.dayOfWeek}</TableCell>
+                  <TableCell>{tt.startTime}</TableCell>
+                  <TableCell>{tt.endTime}</TableCell>
+                  <TableCell>{tt.classroom}</TableCell>
+                  {isTeacherOrAdmin && (
+                    <TableCell>
+                      <Tooltip title="Edit Timetable"><IconButton onClick={() => handleOpen(tt)}><EditIcon /></IconButton></Tooltip>
+                      <Tooltip title="Delete Timetable"><IconButton onClick={() => handleDelete(tt._id)}><DeleteIcon /></IconButton></Tooltip>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {editingId ? 'Edit Timetable' : 'Add Timetable'}
+          <IconButton onClick={handleClose}><CloseIcon /></IconButton>
+        </DialogTitle>
         <DialogContent>
-          <form id="timetable-form" onSubmit={handleSubmit}>
-            <FormControl fullWidth margin="normal">
-              <InputLabel id="course-label">Course</InputLabel>
-              <Select labelId="course-label" name="course" value={form.course} label="Course" onChange={handleChange} required>
-                {courses.map(course => (
-                  <MenuItem key={course._id} value={course._id}>{course.name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl fullWidth margin="normal">
-              <InputLabel id="day-label">Day of Week</InputLabel>
-              <Select labelId="day-label" name="dayOfWeek" value={form.dayOfWeek} label="Day of Week" onChange={handleChange} required>
-                {days.map(day => (
-                  <MenuItem key={day} value={day}>{day}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <TextField label="Start Time" name="startTime" type="time" value={form.startTime} onChange={handleChange} fullWidth margin="normal" required InputLabelProps={{ shrink: true }} />
-            <TextField label="End Time" name="endTime" type="time" value={form.endTime} onChange={handleChange} fullWidth margin="normal" required InputLabelProps={{ shrink: true }} />
-            <TextField label="Classroom" name="classroom" value={form.classroom} onChange={handleChange} fullWidth margin="normal" required />
+          <form id="tt-form" onSubmit={handleSubmit}>
+            <TextField
+              select
+              label="Course"
+              name="course"
+              value={form.course}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+              required
+              variant="outlined"
+            >
+              {courses.map(c => (
+                <option key={c._id} value={c._id}>{c.name}</option>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Day of Week"
+              name="dayOfWeek"
+              value={form.dayOfWeek}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+              required
+              variant="outlined"
+            >
+              {days.map(day => (
+                <option key={day} value={day}>{day}</option>
+              ))}
+            </TextField>
+            <TextField label="Start Time" name="startTime" type="time" value={form.startTime} onChange={handleChange} fullWidth margin="normal" required variant="outlined" InputLabelProps={{ shrink: true }} />
+            <TextField label="End Time" name="endTime" type="time" value={form.endTime} onChange={handleChange} fullWidth margin="normal" required variant="outlined" InputLabelProps={{ shrink: true }} />
+            <TextField label="Classroom" name="classroom" value={form.classroom} onChange={handleChange} fullWidth margin="normal" required variant="outlined" />
           </form>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
-          <Button type="submit" form="timetable-form" variant="contained">{editingId ? 'Update' : 'Create'}</Button>
+          <Button type="submit" form="tt-form" variant="contained">{editingId ? 'Update' : 'Create'}</Button>
         </DialogActions>
       </Dialog>
     </Box>
