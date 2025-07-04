@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { getCourses, createCourse, updateCourse, deleteCourse, enrollStudent, getEnrolledStudents, removeEnrolledStudent } from '../api/courses';
 import { getUser } from '../utils/auth';
-import { Box, Typography, Paper, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert } from '@mui/material';
+import { Box, Typography, Paper, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, Divider, Tooltip, Fab, Skeleton } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import GroupIcon from '@mui/icons-material/Group';
+import AddIcon from '@mui/icons-material/Add';
+import ClassIcon from '@mui/icons-material/Class';
+import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
 
 const emptyForm = { code: '', name: '', creditHours: '', description: '' };
@@ -22,15 +26,18 @@ const CourseList = () => {
   const [enrollError, setEnrollError] = useState('');
   const [enrollSuccess, setEnrollSuccess] = useState('');
   const [selectedCourseId, setSelectedCourseId] = useState(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   const fetchCourses = async () => {
+    setLoading(true);
     try {
       const res = await getCourses();
       setCourses(res.data);
     } catch (err) {
       setError('Failed to fetch courses');
     }
+    setLoading(false);
   };
 
   useEffect(() => { fetchCourses(); }, []);
@@ -114,67 +121,91 @@ const CourseList = () => {
   };
 
   return (
-    <Box p={3}>
-      <Typography variant="h4" mb={2}>Courses</Typography>
-      {isTeacherOrAdmin && (
-        <Button variant="contained" color="primary" onClick={() => handleOpen()} sx={{ mb: 2 }}>
-          Add Course
-        </Button>
-      )}
+    <Box p={{ xs: 1, sm: 2, md: 4 }}>
+      <Box display="flex" alignItems="center" mb={2}>
+        <ClassIcon color="primary" sx={{ mr: 1, fontSize: 32 }} />
+        <Typography variant="h4" fontWeight={700} letterSpacing={1}>
+          Courses
+        </Typography>
+        {isTeacherOrAdmin && (
+          <Tooltip title="Add Course">
+            <Fab color="primary" size="medium" sx={{ ml: 2 }} onClick={() => handleOpen()}>
+              <AddIcon />
+            </Fab>
+          </Tooltip>
+        )}
+      </Box>
+      <Divider sx={{ mb: 3 }} />
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Code</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Credit Hours</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell>Teacher</TableCell>
-              {isTeacherOrAdmin && <TableCell>Actions</TableCell>}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {courses.map(course => (
-              <TableRow key={course._id}>
-                <TableCell>{course.code}</TableCell>
-                <TableCell>{course.name}</TableCell>
-                <TableCell>{course.creditHours}</TableCell>
-                <TableCell>{course.description}</TableCell>
-                <TableCell>{course.teacher?.name}</TableCell>
-                {isTeacherOrAdmin && (
-                  <TableCell>
-                    <IconButton onClick={() => handleOpen(course)}><EditIcon /></IconButton>
-                    <IconButton onClick={() => handleDelete(course._id)}><DeleteIcon /></IconButton>
-                    <Button size="small" variant="outlined" sx={{ ml: 1 }} onClick={() => navigate(`/courses/${course._id}/students`)}>
-                      View Enrolled Students
-                    </Button>
-                  </TableCell>
-                )}
+      <Paper elevation={4} sx={{ borderRadius: 3, boxShadow: 6, p: 2, mb: 4 }}>
+        <TableContainer>
+          <Table sx={{ minWidth: 650 }}>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: 'primary.light', position: 'sticky', top: 0, zIndex: 1 }}>
+                <TableCell sx={{ fontWeight: 700 }}>Code</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Name</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Credit Hours</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Description</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Teacher</TableCell>
+                {isTeacherOrAdmin && <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingId ? 'Edit Course' : 'Add Course'}</DialogTitle>
+            </TableHead>
+            <TableBody>
+              {loading ? Array.from({ length: 4 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={isTeacherOrAdmin ? 6 : 5}>
+                    <Skeleton variant="rectangular" height={40} />
+                  </TableCell>
+                </TableRow>
+              )) : courses.map((course, idx) => (
+                <TableRow
+                  key={course._id}
+                  sx={{
+                    backgroundColor: idx % 2 === 0 ? 'background.default' : 'grey.50',
+                    transition: 'background 0.2s',
+                    '&:hover': { backgroundColor: 'primary.lighter', cursor: 'pointer' },
+                  }}
+                >
+                  <TableCell>{course.code}</TableCell>
+                  <TableCell>{course.name}</TableCell>
+                  <TableCell>{course.creditHours}</TableCell>
+                  <TableCell>{course.description}</TableCell>
+                  <TableCell>{course.teacher?.name}</TableCell>
+                  {isTeacherOrAdmin && (
+                    <TableCell>
+                      <Tooltip title="Edit Course"><IconButton onClick={() => handleOpen(course)}><EditIcon /></IconButton></Tooltip>
+                      <Tooltip title="Delete Course"><IconButton onClick={() => handleDelete(course._id)}><DeleteIcon /></IconButton></Tooltip>
+                      <Tooltip title="View Enrolled Students"><IconButton onClick={() => navigate(`/courses/${course._id}/students`)}><GroupIcon /></IconButton></Tooltip>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {editingId ? 'Edit Course' : 'Add Course'}
+          <IconButton onClick={handleClose}><CloseIcon /></IconButton>
+        </DialogTitle>
         <DialogContent>
           <form id="course-form" onSubmit={handleSubmit}>
-            <TextField label="Code" name="code" value={form.code} onChange={handleChange} fullWidth margin="normal" required disabled={!!editingId} />
-            <TextField label="Name" name="name" value={form.name} onChange={handleChange} fullWidth margin="normal" required />
-            <TextField label="Credit Hours" name="creditHours" type="number" value={form.creditHours} onChange={handleChange} fullWidth margin="normal" required />
-            <TextField label="Description" name="description" value={form.description} onChange={handleChange} fullWidth margin="normal" />
+            <TextField label="Code" name="code" value={form.code} onChange={handleChange} fullWidth margin="normal" required disabled={!!editingId} variant="outlined" />
+            <TextField label="Name" name="name" value={form.name} onChange={handleChange} fullWidth margin="normal" required variant="outlined" />
+            <TextField label="Credit Hours" name="creditHours" type="number" value={form.creditHours} onChange={handleChange} fullWidth margin="normal" required variant="outlined" />
+            <TextField label="Description" name="description" value={form.description} onChange={handleChange} fullWidth margin="normal" variant="outlined" />
           </form>
           {isTeacherOrAdmin && editingId && (
             <Box mt={3}>
               <Typography variant="h6" mb={1}>Enrolled Students</Typography>
               <form onSubmit={handleEnroll} style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                <TextField label="Student Email" value={enrollEmail} onChange={e => setEnrollEmail(e.target.value)} size="small" />
+                <TextField label="Student Email" value={enrollEmail} onChange={e => setEnrollEmail(e.target.value)} size="small" variant="outlined" />
                 <Button type="submit" variant="contained">Add</Button>
               </form>
               {enrollError && <Alert severity="error" sx={{ mb: 1 }}>{enrollError}</Alert>}
               {enrollSuccess && <Alert severity="success" sx={{ mb: 1 }}>{enrollSuccess}</Alert>}
-              <TableContainer component={Paper}>
+              <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: 2 }}>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
