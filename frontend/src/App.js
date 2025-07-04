@@ -12,6 +12,7 @@ import AttendanceTeacher from './pages/AttendanceTeacher';
 import AttendanceStudent from './pages/AttendanceStudent';
 import ProtectedRoute from './components/ProtectedRoute';
 import EnrolledStudentsPage from './pages/EnrolledStudentsPage';
+import StudentCoursesStats from './pages/StudentCoursesStats';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!getToken());
@@ -44,6 +45,11 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/courses/:id/students" element={isAuthenticated ? <EnrolledStudentsPage /> : <Navigate to="/login" />} />
+        <Route path="/student-courses-stats" element={
+          <ProtectedRoute roles={['student']}>
+            <StudentCoursesStats />
+          </ProtectedRoute>
+        } />
         <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
       </Routes>
     </Router>
