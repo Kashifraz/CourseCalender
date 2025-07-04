@@ -8,7 +8,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import { getCourses } from '../api/courses';
 import { getTimetablesByCourse } from '../api/timetables';
 import { createSession, getSessionRecords } from '../api/attendance';
-import QRCode from 'qrcode.react';
+import { QRCodeCanvas } from 'qrcode.react';
 
 const AttendanceTeacher = () => {
   const [courses, setCourses] = useState([]);
@@ -133,7 +133,7 @@ const AttendanceTeacher = () => {
       {qrCode && (
         <Paper elevation={4} sx={{ p: 4, borderRadius: 3, boxShadow: 6, maxWidth: 420, width: '100%', mb: 3, textAlign: 'center' }}>
           <Typography variant="h6" fontWeight={600} mb={2}>Scan this QR Code</Typography>
-          <QRCode value={qrCode} size={200} style={{ margin: '0 auto' }} />
+          <QRCodeCanvas value={qrCode} size={200} style={{ margin: '0 auto' }} />
           <Box mt={2}>
             <Button variant="outlined" color="primary" onClick={handleViewRecords} disabled={fetchingRecords}>
               {fetchingRecords ? <CircularProgress size={20} /> : 'View Attendance Records'}
