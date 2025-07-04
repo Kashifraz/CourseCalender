@@ -4,7 +4,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { getTimetables, getTimetablesByCourse } from '../api/timetables';
-import { getCourses, getEnrolledCourses } from '../api/courses';
+import { getCourses } from '../api/courses';
 import { getAttendanceHistory, getCalendarSessions } from '../api/attendance';
 import { getUser } from '../utils/auth';
 import { Box, Typography, Paper, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
@@ -79,15 +79,12 @@ const CalendarView = () => {
     }
   }, [isStudent, selectedCourse]);
 
-  // Only fetch enrolled courses once on mount for students
+  // For students, use the courses from the main fetch
   useEffect(() => {
     if (isStudent) {
-      getEnrolledCourses().then(res => {
-        setEnrolledCourses(res.data);
-      });
+      setEnrolledCourses(courses);
     }
-    // eslint-disable-next-line
-  }, []); // Only on mount
+  }, [isStudent, courses]);
 
   // Timetable events (for all users)
   const timetableEvents = timetables.map(tt => {

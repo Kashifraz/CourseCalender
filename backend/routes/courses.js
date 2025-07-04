@@ -98,15 +98,6 @@ router.delete('/:id/enroll/:studentId', auth, requireRole('teacher', 'admin'), a
   }
 });
 
-// Get all courses the logged-in student is enrolled in (MUST be before any /:id route)
-router.get('/enrolled', auth, requireRole('student'), async (req, res) => {
-  try {
-    const enrollments = await Enrollment.find({ student: req.user.userId }).populate('course');
-    const courses = enrollments.map(e => e.course);
-    res.json(courses);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
+
 
 module.exports = router; 

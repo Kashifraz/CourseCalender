@@ -4,6 +4,7 @@ import { getUser } from '../utils/auth';
 import { Box, Typography, Paper, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { useNavigate } from 'react-router-dom';
 
 const emptyForm = { code: '', name: '', creditHours: '', description: '' };
 
@@ -21,6 +22,7 @@ const CourseList = () => {
   const [enrollError, setEnrollError] = useState('');
   const [enrollSuccess, setEnrollSuccess] = useState('');
   const [selectedCourseId, setSelectedCourseId] = useState(null);
+  const navigate = useNavigate();
 
   const fetchCourses = async () => {
     try {
@@ -144,6 +146,9 @@ const CourseList = () => {
                   <TableCell>
                     <IconButton onClick={() => handleOpen(course)}><EditIcon /></IconButton>
                     <IconButton onClick={() => handleDelete(course._id)}><DeleteIcon /></IconButton>
+                    <Button size="small" variant="outlined" sx={{ ml: 1 }} onClick={() => navigate(`/courses/${course._id}/students`)}>
+                      View Enrolled Students
+                    </Button>
                   </TableCell>
                 )}
               </TableRow>

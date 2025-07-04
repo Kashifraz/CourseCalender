@@ -15,4 +15,4 @@ export const deleteCourse = (id) => axios.delete(`${API_URL}/${id}`, authHeader(
 export const enrollStudent = (courseId, email) => axios.post(`${API_URL}/${courseId}/enroll`, { email }, authHeader());
 export const getEnrolledStudents = (courseId) => axios.get(`${API_URL}/${courseId}/students`, authHeader());
 export const removeEnrolledStudent = (courseId, studentId) => axios.delete(`${API_URL}/${courseId}/enroll/${studentId}`, authHeader());
-export const getEnrolledCourses = () => axios.get(`${API_URL}/enrolled`, authHeader()); 
+ 
