@@ -65,8 +65,13 @@ const Dashboard = ({ onLogout }) => {
         try {
           const res = await getCourses();
           if (!isMounted) return;
-          // Only courses where user is teacher
-          const teacherCourses = res.data.filter(c => c.teacher && c.teacher._id === user._id);
+          // Only courses where user is teacher (handle both string and object)
+          const teacherCourses = res.data.filter(c => {
+            if (!c.teacher) return false;
+            if (typeof c.teacher === 'string') return c.teacher === user._id;
+            if (typeof c.teacher === 'object') return c.teacher._id === user._id;
+            return false;
+          });
           setCourses(teacherCourses);
           const statsObj = {};
           await Promise.all(teacherCourses.map(async (course) => {
@@ -182,30 +187,34 @@ const Dashboard = ({ onLogout }) => {
         <Box width="100%" maxWidth={1200}>
           <Typography variant="h5" mb={3} align="center">My Courses & Class Attendance Stats</Typography>
           {loading ? <Box p={3}><CircularProgress /></Box> : error ? <Box p={3}><Alert severity="error">{error}</Alert></Box> : (
-            <Grid container spacing={3}>
-              {courses.map(course => (
-                <Grid item xs={12} md={6} lg={4} key={course._id}>
-                  <Paper sx={{ p: 3, mb: 2 }}>
-                    <Typography variant="h6" mb={1}>{course.name}</Typography>
-                    <Typography variant="body2" mb={2}>{course.description}</Typography>
-                    <Typography mb={1}>
-                      Enrolled Students: <b>{stats[course._id]?.enrolled}</b><br />
-                      Average Attendance: <b>{stats[course._id]?.avgAttendance}%</b>
-                    </Typography>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={[{ name: 'Avg Attendance', value: Number(stats[course._id]?.avgAttendance) || 0 }]}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="value" fill="#4caf50" name="Average Attendance %" />
-                        <XAxis dataKey="name" />
-                        <YAxis domain={[0, 100]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
+            courses.length === 0 ? (
+              <Alert severity="info">No courses found for you.</Alert>
+            ) : (
+              <Grid container spacing={3}>
+                {courses.map(course => (
+                  <Grid item xs={12} md={6} lg={4} key={course._id}>
+                    <Paper sx={{ p: 3, mb: 2 }}>
+                      <Typography variant="h6" mb={1}>{course.name}</Typography>
+                      <Typography variant="body2" mb={2}>{course.description}</Typography>
+                      <Typography mb={1}>
+                        Enrolled Students: <b>{stats[course._id]?.enrolled}</b><br />
+                        Average Attendance: <b>{stats[course._id]?.avgAttendance}%</b>
+                      </Typography>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={[{ name: 'Avg Attendance', value: Number(stats[course._id]?.avgAttendance) || 0 }]}
+                          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="value" fill="#4caf50" name="Average Attendance %" />
+                          <XAxis dataKey="name" />
+                          <YAxis domain={[0, 100]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            )
           )}
         </Box>
       )}
