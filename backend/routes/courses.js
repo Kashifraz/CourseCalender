@@ -21,14 +21,14 @@ router.post('/', auth, requireRole('teacher', 'admin'), async (req, res) => {
 
 // List all courses
 router.get('/', auth, async (req, res) => {
-  const courses = await Course.find().populate('teacher', 'name email');
+  const courses = await Course.find().populate('teacher', '_id name email');
   res.json(courses);
 });
 
 // Get course details
 router.get('/:id', auth, async (req, res) => {
   try {
-    const course = await Course.findById(req.params.id).populate('teacher', 'name email');
+    const course = await Course.findById(req.params.id).populate('teacher', '_id name email');
     if (!course) return res.status(404).json({ message: 'Course not found' });
     res.json(course);
   } catch (error) {
@@ -97,7 +97,5 @@ router.delete('/:id/enroll/:studentId', auth, requireRole('teacher', 'admin'), a
     res.status(400).json({ message: error.message });
   }
 });
-
-
 
 module.exports = router; 
