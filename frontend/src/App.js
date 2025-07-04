@@ -11,6 +11,7 @@ import CalendarView from './pages/CalendarView';
 import AttendanceTeacher from './pages/AttendanceTeacher';
 import AttendanceStudent from './pages/AttendanceStudent';
 import ProtectedRoute from './components/ProtectedRoute';
+import EnrolledStudentsPage from './pages/EnrolledStudentsPage';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!getToken());
@@ -42,6 +43,7 @@ function App() {
             <AttendanceStudent />
           </ProtectedRoute>
         } />
+        <Route path="/courses/:id/students" element={isAuthenticated ? <EnrolledStudentsPage /> : <Navigate to="/login" />} />
         <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
       </Routes>
     </Router>

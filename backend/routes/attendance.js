@@ -142,4 +142,69 @@ router.get('/calendar/:courseId', auth, requireRole('student'), async (req, res)
   }
 });
 
+// Get all enrolled students for a course with their attendance percentage
+router.get('/course/:courseId/students', auth, requireRole('teacher', 'admin'), async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    // Get all enrolled students
+    const enrollments = await Enrollment.find({ course: courseId }).populate('student', 'name email');
+    // Get all sessions for the course
+    const sessions = await AttendanceSession.find({ course: courseId });
+    const sessionIds = sessions.map(s => s._id.toString());
+    // Get all attendance records for these sessions
+    const records = await AttendanceRecord.find({ session: { $in: sessionIds } });
+    // Build a map: studentId -> number of presents
+    const presentMap = {};
+    records.forEach(r => {
+      if (r.status === 'present') {
+        presentMap[r.student.toString()] = (presentMap[r.student.toString()] || 0) + 1;
+      }
+    });
+    // Build response
+    const totalSessions = sessions.length;
+    const students = enrollments.map(e => {
+      const presents = presentMap[e.student._id.toString()] || 0;
+      const attendancePercentage = totalSessions > 0 ? ((presents / totalSessions) * 100).toFixed(1) : 'N/A';
+      return {
+        _id: e.student._id,
+        name: e.student.name,
+        email: e.student.email,
+        attendancePercentage
+      };
+    });
+    res.json(students);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Get attendance matrix for a course (for export)
+router.get('/course/:courseId/attendance-matrix', auth, requireRole('teacher', 'admin'), async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    // Get all enrolled students
+    const enrollments = await Enrollment.find({ course: courseId }).populate('student', 'name email');
+    const students = enrollments.map(e => ({ _id: e.student._id, name: e.student.name, email: e.student.email }));
+    // Get all sessions for the course, sorted by date/time
+    const sessions = await AttendanceSession.find({ course: courseId }).sort({ date: 1, startTime: 1 });
+    // Get all attendance records for these sessions
+    const sessionIds = sessions.map(s => s._id.toString());
+    const records = await AttendanceRecord.find({ session: { $in: sessionIds } });
+    // Build matrix: studentId -> sessionId -> status
+    const matrix = {};
+    students.forEach(s => { matrix[s._id] = {}; });
+    sessions.forEach(sess => {
+      students.forEach(s => {
+        matrix[s._id][sess._id] = 'not_marked';
+      });
+    });
+    records.forEach(r => {
+      matrix[r.student.toString()][r.session.toString()] = r.status || 'present';
+    });
+    res.json({ students, sessions, matrix });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 module.exports = router; 
