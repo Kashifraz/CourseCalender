@@ -1,0 +1,6 @@
+projectKey=CourseCalender
+serverUrl=http://localhost:9000
+serverVersion=25.6.0.109173
+dashboardUrl=http://localhost:9000/dashboard?id=CourseCalender
+ceTaskId=c5be7c63-2438-4d38-9d90-f09b0e9906b5
+ceTaskUrl=http://localhost:9000/api/ce/task?id=c5be7c63-2438-4d38-9d90-f09b0e9906b5
